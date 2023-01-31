@@ -1,0 +1,10 @@
+*.#*
+*~
+.env
+*#
+*.DS_Store
+*.rdb
+.*.swp
+.idea
+.*rc
+!.gitkeep
