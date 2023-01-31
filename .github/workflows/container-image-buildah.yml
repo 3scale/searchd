@@ -1,0 +1,80 @@
+name: Build 3scale searchd oci container image
+
+on:
+  workflow_dispatch: {}
+  workflow_call: {}
+  push:
+    branches: [ main ]
+  # pull_request:
+  #   types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ci-container-build-${{ github.ref }}-1
+  cancel-in-progress: true
+
+env:
+  # Use docker.io for Docker Hub if empty
+  REGISTRY: ghcr.io
+  # github.repository as <account>/<repo>
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  buildah:
+    runs-on: ubuntu-latest
+    steps:
+      # Allow multi-target builds
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      # https://github.com/actions/checkout
+      - uses: actions/checkout@v3
+
+      - name: Build image
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          tags: ${{ steps.meta.outputs.tags }}
+          platforms: linux/amd64,linux/s390x,linux/ppc64le
+          labels: ${{ steps.meta.outputs.labels }}
+          layers: false
+          oci: true
+          tls-verify: true
+          extra-args: |
+            --squash
+          containerfiles: |
+            Containerfile
+
+      - name: Echo Outputs
+        run: |
+          echo "Image: ${{ steps.build-image.outputs.image }}"
+          echo "Tags: ${{ steps.build-image.outputs.tags }}"
+          echo "Tagged Image: ${{ steps.build-image.outputs.image-with-tag }}"
+
+      - name: Check images created
+        run: buildah images
+
+      - name: Push To quay.io
+        id: push-to-quay
+        uses: redhat-actions/push-to-registry@v2
+        if: github.event_name != 'pull_request'
+        with:
+          tags: ${{ steps.build-image.outputs.tags }}
+
+      - name: Print image url
+        run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
