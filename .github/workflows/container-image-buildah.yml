@@ -69,12 +69,12 @@ jobs:
       - name: Check images created
         run: buildah images
 
-      - name: Push To quay.io
-        id: push-to-quay
+      - name: Push To Container Registry
+        id: push-to-container-registry
         uses: redhat-actions/push-to-registry@v2
         if: github.event_name != 'pull_request'
         with:
           tags: ${{ steps.build-image.outputs.tags }}
 
       - name: Print image url
-        run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
+        run: echo "Image pushed to ${{ steps.push-to-container-registry.outputs.registry-paths }}"

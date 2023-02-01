@@ -8,7 +8,7 @@ on:
     types: [opened, reopened, synchronize]
 
 concurrency:
-  group: ci-container-build-${{ github.ref }}-1
+  group: ci-containerfile-lint-${{ github.ref }}-1
   cancel-in-progress: true
 
 
