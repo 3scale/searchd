@@ -1,0 +1,19 @@
+name: Lint the Containerfile
+
+on:
+  workflow_dispatch: {}
+  workflow_call: {}
+  push: {}
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ci-container-build-${{ github.ref }}-1
+  cancel-in-progress: true
+
+
+steps:
+  - uses: actions/checkout@v3
+  - uses: hadolint/hadolint-action@v3
+    with:
+      dockerfile: Containerfile
