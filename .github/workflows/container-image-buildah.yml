@@ -1,4 +1,4 @@
-name: Build 3scale searchd oci container image
+name: Container Image
 
 on:
   workflow_dispatch: {}
