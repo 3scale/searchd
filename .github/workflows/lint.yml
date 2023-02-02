@@ -1,4 +1,4 @@
-name: Lint the Containerfile
+name: Hadolint
 
 on:
   workflow_dispatch: {}
