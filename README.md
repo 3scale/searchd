@@ -2,7 +2,6 @@
 
 [![image-build](https://github.com/3scale/searchd/actions/workflows/container-image-buildah.yml/badge.svg)](https://github.com/3scale/searchd/actions/workflows/container-image-buildah.yml)
 [![lint](https://github.com/3scale/searchd/actions/workflows/lint.yml/badge.svg)](https://github.com/3scale/searchd/actions/workflows/lint.yml)
-[![Container Repository on Quay](https://quay.io/repository/3scale/searchd/status "Container Repository on Quay")](https://quay.io/repository/3scale/searchd)
 
 ## Build image
 

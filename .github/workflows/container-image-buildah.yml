@@ -25,6 +25,8 @@ jobs:
       # Allow multi-target builds
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
+        with:
+          platforms: s390x,ppc64le # arm64
       # Login against a Docker registry except on PR
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
@@ -57,6 +59,8 @@ jobs:
           tls-verify: true
           extra-args: |
             --squash
+          build-args: |
+            PORTA_IMAGE=quay.io/3scale/porta:free-sphinx
           containerfiles: |
             Containerfile
 
@@ -68,6 +72,15 @@ jobs:
 
       - name: Check images created
         run: buildah images
+
+      - name: Smoke test the images
+        run: |
+          set -ex
+          for arch in amd64 s390x ppc64le; do
+            podman run -d --name=searchd --rm -u 14:0 -p 9306:9306 --platform=linux/$arch ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
+            mysql -h 127.0.0.1 -P 9306 -e "SELECT * FROM account limit 1;"
+            podman kill searchd
+          done
 
       - name: Push To Container Registry
         id: push-to-container-registry
