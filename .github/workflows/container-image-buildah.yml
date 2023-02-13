@@ -3,9 +3,10 @@ name: Container Image
 on:
   workflow_dispatch: {}
   workflow_call: {}
-  push: {}
-  # pull_request:
-  #   types: [opened, reopened, synchronize]
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [opened, reopened, synchronize]
 
 concurrency:
   group: ci-container-build-${{ github.ref }}-1
@@ -90,7 +91,7 @@ jobs:
       - name: Push To Container Registry
         id: push-to-container-registry
         uses: redhat-actions/push-to-registry@v2
-        if: github.ref_name == 'main'
+        if: github.event_name != 'pull_request' && github.ref_name == 'main'
         with:
           tags: ${{ steps.build-image.outputs.tags }}
 
