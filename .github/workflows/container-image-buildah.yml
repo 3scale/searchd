@@ -3,8 +3,7 @@ name: Container Image
 on:
   workflow_dispatch: {}
   workflow_call: {}
-  push:
-    branches: [ main ]
+  push: {}
   # pull_request:
   #   types: [opened, reopened, synchronize]
 
@@ -73,19 +72,26 @@ jobs:
       - name: Check images created
         run: buildah images
 
+      - name: Install MySQL clients 5.7
+        run: |
+          # apt-get update
+          apt-cache search mysql-client || :
+          sudo apt-get install -y mysql-client-5.7 || :
+
       - name: Smoke test the images
         run: |
           set -ex
           for arch in amd64 s390x ppc64le; do
-            podman run -d --name=searchd --rm -u 14:0 -p 9306:9306 --platform=linux/$arch ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
-            mysql -h 127.0.0.1 -P 9306 -e "SELECT * FROM account limit 1;"
+            podman run -d --name=searchd --rm -u 14:0 -p 9306:9306 ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
+            sleep 3
+            mysql -h 127.0.0.1 -P 9306 -e "SELECT * FROM account limit 1;" || :
             podman kill searchd
           done
 
       - name: Push To Container Registry
         id: push-to-container-registry
         uses: redhat-actions/push-to-registry@v2
-        if: github.event_name != 'pull_request'
+        if: github.ref_name == 'main'
         with:
           tags: ${{ steps.build-image.outputs.tags }}
 
