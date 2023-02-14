@@ -73,19 +73,13 @@ jobs:
       - name: Check images created
         run: buildah images
 
-      - name: Install MySQL clients 5.7
-        run: |
-          # apt-get update
-          apt-cache search mysql-client || :
-          sudo apt-get install -y mysql-client-5.7 || :
-
       - name: Smoke test the images
         run: |
           set -ex
           for arch in amd64 s390x ppc64le; do
             podman run -d --name=searchd --rm -u 14:0 -p 9306:9306 ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
             sleep 3
-            mysql -h 127.0.0.1 -P 9306 -e "SELECT * FROM account limit 1;" || :
+            podman run --rm --entrypoint "/bin/env" mysql:5.7 -- mysql -h host.containers.internal -P 9306 -e "SELECT * FROM account limit 1;"
             podman kill searchd
           done
       - name: Push To Container Registry
