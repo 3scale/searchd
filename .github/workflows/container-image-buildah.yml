@@ -79,7 +79,7 @@ jobs:
           set -ex
           # accessing a mapped port from a container did not work so lets
           # create a pod where both - server and client have same localhost
-          podman pod create searchd
+          podman pod create -n searchd
           for arch in amd64 s390x ppc64le; do
             podman run -d --pod searchd --name=searchd -u 14:0 ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
             sleep 3
@@ -91,9 +91,9 @@ jobs:
       - name: Push To Container Registry
         id: push-to-container-registry
         uses: redhat-actions/push-to-registry@v2
-        if: github.event_name != 'pull_request' && github.ref_name == 'main'
+        if: github.event_name != 'pull_request'
         with:
-          tags: ${{ steps.build-image.outputs.tags }}
+          tags: ${{ github.ref_name == 'main' && 'nightly' || steps.build-image.outputs.tags }}
 
       - name: Print image url
         run: echo "Image pushed to ${{ steps.push-to-container-registry.outputs.registry-paths }}"
