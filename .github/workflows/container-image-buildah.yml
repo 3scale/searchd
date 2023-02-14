@@ -79,12 +79,12 @@ jobs:
           set -ex
           # accessing a mapped port from a container did not work so lets
           # create a pod where both - server and client have same localhost
-          podman pod create -n searchd
+          podman pod create > podid
           for arch in amd64 s390x ppc64le; do
-            podman run -d --pod searchd --name=searchd -u 14:0 ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
+            podman run -d --pod-id-file=podid --name=searchd -u 14:0 ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
             sleep 3
             podman logs searchd
-            podman run --pod searchd --rm --entrypoint "/bin/env" mysql:5.7 -- mysql -h 127.0.0.1 -P 9306 -e "SELECT * FROM account limit 1;"
+            podman run --pod-id-file=podid --rm --entrypoint "/bin/env" mysql:5.7 -- mysql -h 127.0.0.1 -P 9306 -e "SELECT * FROM account limit 1;"
             podman rm -f searchd
           done
 
