@@ -59,6 +59,7 @@ jobs:
           tls-verify: true
           extra-args: |
             --squash
+            --jobs=3
           build-args: |
             PORTA_IMAGE=quay.io/3scale/porta:free-sphinx
           containerfiles: |
@@ -76,13 +77,14 @@ jobs:
       - name: Smoke test the images
         run: |
           set -ex
+          # accessing a mapped port from a container did not work so lets
+          # create a pod where both - server and client have same localhost
+          podman pod create searchd
           for arch in amd64 s390x ppc64le; do
-            podman run -d --name=searchd -u 14:0 -p 9306:9306 ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
+            podman run -d --pod searchd --name=searchd -u 14:0 ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
             sleep 3
-            podman ps
             podman logs searchd
-            podman run --rm --entrypoint "/bin/env" mysql:5.7 -- cat /etc/hosts
-            podman run --rm --entrypoint "/bin/env" mysql:5.7 -- mysql -h host.containers.internal -P 9306 -e "SELECT * FROM account limit 1;"
+            podman run --pod searchd --rm --entrypoint "/bin/env" mysql:5.7 -- mysql -h 127.0.0.1 -P 9306 -e "SELECT * FROM account limit 1;"
             podman rm -f searchd
           done
 
