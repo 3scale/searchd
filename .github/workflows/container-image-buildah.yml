@@ -77,11 +77,15 @@ jobs:
         run: |
           set -ex
           for arch in amd64 s390x ppc64le; do
-            podman run -d --name=searchd --rm -u 14:0 -p 9306:9306 ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
+            podman run -d --name=searchd -u 14:0 -p 9306:9306 ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
             sleep 3
+            podman ps
+            podman logs searchd
+            podman run --rm --entrypoint "/bin/env" mysql:5.7 -- cat /etc/hosts
             podman run --rm --entrypoint "/bin/env" mysql:5.7 -- mysql -h host.containers.internal -P 9306 -e "SELECT * FROM account limit 1;"
-            podman kill searchd
+            podman rm -f searchd
           done
+
       - name: Push To Container Registry
         id: push-to-container-registry
         uses: redhat-actions/push-to-registry@v2
