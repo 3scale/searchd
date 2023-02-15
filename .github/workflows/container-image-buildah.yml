@@ -5,8 +5,8 @@ on:
   workflow_call: {}
   push:
     branches: [ main ]
-  # pull_request:
-  #   types: [opened, reopened, synchronize]
+  pull_request:
+    types: [opened, reopened, synchronize]
 
 concurrency:
   group: ci-container-build-${{ github.ref }}-1
@@ -14,7 +14,7 @@ concurrency:
 
 env:
   # Use docker.io for Docker Hub if empty
-  REGISTRY: ghcr.io
+  REGISTRY: quay.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
 
@@ -25,6 +25,8 @@ jobs:
       # Allow multi-target builds
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
+        with:
+          platforms: s390x,ppc64le # arm64
       # Login against a Docker registry except on PR
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
@@ -32,8 +34,8 @@ jobs:
         uses: redhat-actions/podman-login@v1
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
       # Extract metadata (tags, labels) for Docker
       # https://github.com/docker/metadata-action
       - name: Docker meta
@@ -57,6 +59,9 @@ jobs:
           tls-verify: true
           extra-args: |
             --squash
+            --jobs=3
+          build-args: |
+            PORTA_IMAGE=quay.io/3scale/porta:free-sphinx
           containerfiles: |
             Containerfile
 
@@ -69,12 +74,26 @@ jobs:
       - name: Check images created
         run: buildah images
 
+      - name: Smoke test the images
+        run: |
+          set -ex
+          # accessing a mapped port from a container did not work so lets
+          # create a pod where both - server and client have same localhost
+          podman pod create > podid
+          for arch in amd64 s390x ppc64le; do
+            podman run -d --pod-id-file=podid --name=searchd -u 14:0 ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
+            sleep 3
+            podman logs searchd
+            podman run --pod-id-file=podid --rm --entrypoint "/bin/env" mysql:5.7 -- mysql -h 127.0.0.1 -P 9306 -e "SELECT * FROM account limit 1;"
+            podman rm -f searchd
+          done
+
       - name: Push To Container Registry
         id: push-to-container-registry
         uses: redhat-actions/push-to-registry@v2
         if: github.event_name != 'pull_request'
         with:
-          tags: ${{ steps.build-image.outputs.tags }}
+          tags: ${{ github.ref_name == 'main' && 'nightly' || steps.build-image.outputs.tags }}
 
       - name: Print image url
         run: echo "Image pushed to ${{ steps.push-to-container-registry.outputs.registry-paths }}"

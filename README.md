@@ -6,7 +6,28 @@
 ## Build image
 
 ```
-podman build -t 3scale-searchd .
+podman build --squash -t 3scale-searchd .
+```
+
+Optionally supply `--build-arg PORTA_IMAGE=value` to use something different than the default `quay.io/3scale/porta:nightly`.
+
+## Lint Containerfile
+
+```
+hadolint Containerfile
+```
+
+## Run locally
+
+To simulate OpenShift environment run it as non-root like this:
+```
+podman run --rm -ti -u 14:0 -p 9306:9306 quay.io/3scale/searchd:latest
+```
+
+Then you can connect with `mysql` client:
+```
+mysql -h 127.0.0.1 -P 9306
+SELECT * FROM account limit 1;
 ```
 
 ## Issues

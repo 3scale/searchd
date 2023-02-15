@@ -23,8 +23,28 @@ RUN if [ "$(uname -m)" == "x86_64" ]; then \
 
 
 FROM registry.access.redhat.com/ubi7-minimal
+
+LABEL org.opencontainers.image.authors="https://issues.redhat.com/browse/THREESCALE" \
+      org.opencontainers.image.title="3scale searchd" \
+      org.opencontainers.image.vendor="Red Hat, Inc." \
+      org.opencontainers.image.url="https://github.com/3scale/searchd" \
+      org.opencontainers.image.documentation="https://github.com/3scale/searchd" \
+      org.opencontainers.image.description="Searchd to be used in a 3scale installation" \
+      org.opencontainers.image.licenses="Apache-2.0"
+      # org.opencontainers.image.version="nightly"
+      # org.opencontainers.image.ref.name="" \
+      # org.opencontainers.image.revision="" \
+      # org.opencontainers.image.created=""
+
+ARG PORTA_IMAGE=quay.io/3scale/porta:nightly
 COPY --from=builder /home/rpms /tmp/rpms
 COPY --from=builder /home/searchd /
+COPY --from=$PORTA_IMAGE /opt/system/config/standalone.sphinx.conf "/etc/sphinx/system.sphinx.conf"
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release && \
     rpm -iv --excludedocs /tmp/rpms/* && \
-    rm -rf /tmp/rpms
+    rm -rf /tmp/rpms && \
+    mkdir -p /var/lib/sphinx /var/run/sphinx && \
+    chmod 770 /var/lib/sphinx /var/run/sphinx
+
+ENTRYPOINT ["/bin/env", "searchd", "--pidfile", "--config", "/etc/sphinx/system.sphinx.conf", "--nodetach"]
+EXPOSE 9306/tcp
