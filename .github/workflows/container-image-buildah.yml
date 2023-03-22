@@ -48,7 +48,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=schedule
-            ${{ github.ref_name == 'main' && 'type=raw,value=nightly' || 'type=ref,event=branch' }}
+            ${{ github.ref_name == 'main' && 'type=raw,value=nightly\ntype=raw,value=latest' || 'type=ref,event=branch' }}
             type=ref,event=tag
             type=ref,event=pr
 
