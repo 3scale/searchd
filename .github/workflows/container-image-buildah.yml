@@ -4,6 +4,7 @@ on:
   workflow_dispatch: {}
   workflow_call: {}
   schedule:
+    # every Wednesday morning
     - cron: 7 7 * * 3
   push:
     branches: [ main ]
@@ -47,7 +48,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=schedule
-            ${{ github.ref_name == 'main' && 'type=raw,value=nightly' || 'type=ref,event=branch' }}
+            ${{ github.ref_name == 'main' && 'type=raw,value=nightly\ntype=raw,value=latest' || 'type=ref,event=branch' }}
             type=ref,event=tag
             type=ref,event=pr
 
@@ -68,7 +69,7 @@ jobs:
             --squash
             --jobs=3
           build-args: |
-            PORTA_IMAGE=quay.io/3scale/porta:free-sphinx
+            PORTA_IMAGE=quay.io/3scale/porta:nightly
           containerfiles: |
             Containerfile
 

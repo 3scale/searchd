@@ -21,7 +21,7 @@ hadolint Containerfile
 
 To simulate OpenShift environment run it as non-root like this:
 ```
-podman run --rm -ti -u 14:0 -p 9306:9306 quay.io/3scale/searchd:latest
+podman run --rm -ti -u 14:0 -p 9306:9306 quay.io/3scale/searchd:nightly
 ```
 
 Then you can connect with `mysql` client:
