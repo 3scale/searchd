@@ -43,8 +43,8 @@ COPY --from=$PORTA_IMAGE /opt/system/config/standalone.sphinx.conf "/etc/sphinx/
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release && \
     rpm -iv --excludedocs /tmp/rpms/* && \
     rm -rf /tmp/rpms && \
-    mkdir -p /var/lib/sphinx /var/run/sphinx && \
-    chmod 770 /var/lib/sphinx /var/run/sphinx
+    mkdir -p /var/lib/searchd /var/run/sphinx && \
+    chmod 770 /var/lib/searchd /var/run/sphinx
 
 ENTRYPOINT ["/bin/env", "searchd", "--pidfile", "--config", "/etc/sphinx/system.sphinx.conf", "--nodetach"]
 EXPOSE 9306/tcp
