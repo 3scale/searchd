@@ -13,6 +13,7 @@ RUN yum install -y --setopt=skip_missing_names_on_install=False,tsflags=nodocs l
       git clone --depth=1 --branch=$SEARCHD_REF $SEARCHD_REPO . && \
       sed -i -e 's/Boost_USE_STATIC_LIBS ON/Boost_USE_STATIC_LIBS OFF/' src/CMakeLists.txt && \
       mkdir build && cd build && \
+      clang-16 --version && clang++-16 --version && \
       cmake $BUILD_FLAGS .. && \
       cmake --build . --target package --config RelWithDebInfo
 
