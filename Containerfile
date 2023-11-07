@@ -8,16 +8,15 @@ ENV SEARCHD_REF=6.2.12 \
 WORKDIR $BUILD_PATH
 
 SHELL ["/bin/bash", "-x", "-o", "pipefail", "-c"]
+# clang is broken on s390x (RHEL-15874), to use gcc remove CC and CXX variables,
+#   also replace llvm-toolset with make automake gcc gcc-c++ kernel-devel
 # hadolint ignore=DL3003,DL3032,SC2046
 RUN yum install -y --setopt=skip_missing_names_on_install=False,tsflags=nodocs llvm-toolset mysql cmake boost-devel openssl-devel zlib-devel bison flex systemd-units rpm-build git && \
       git clone --depth=1 --branch=$SEARCHD_REF $SEARCHD_REPO . && \
       sed -i -e 's/Boost_USE_STATIC_LIBS ON/Boost_USE_STATIC_LIBS OFF/' src/CMakeLists.txt && \
       mkdir build && cd build && \
-      clang-16 --version && clang++-16 --version && \
       cmake $BUILD_FLAGS .. && \
       cmake --build . --target package --config RelWithDebInfo
-
-# /tmp/manticore_uselessly_long_path_to_prevent_rpm_build_issues/build/manticore-tools-debuginfo-6.2.12_230823.4553471-1.el9.x86_64.rpm and other RPMs
 
 FROM quay.io/centos/centos:stream9-minimal
 
@@ -42,6 +41,7 @@ RUN microdnf install -y --nodocs mysql openssl boost-context boost-filesystem zl
     rpm -iv --excludedocs $MANTICORE_RPMS && \
     cd - && rm -rf /tmp/rpms && \
     microdnf clean all && \
+    sed -i -e 's#/var/run/sphinx/#/var/run/manticore/#' -e 's#/var/lib/searchd#/var/lib/manticore#' /etc/manticoresearch/manticore.conf && \
     chmod g+w /var/lib/manticore /var/run/manticore /var/log/manticore && \
     chgrp 0 /var/lib/manticore /var/run/manticore /var/log/manticore
 

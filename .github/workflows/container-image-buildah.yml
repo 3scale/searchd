@@ -1,15 +1,17 @@
-name: Container Image
+name: Container Image Reusable Workflow
 
 on:
-  workflow_dispatch: {}
-  workflow_call: {}
-  schedule:
-    # every Wednesday morning
-    - cron: 7 7 * * 3
-  push:
-    branches: [ main ]
-  pull_request:
-    types: [opened, reopened, synchronize]
+  workflow_call:
+    inputs:
+      platforms:
+        description: comma-separated list of platforms to build for, e.g. linux/amd64,linux/s390x,linux/ppc64le
+        default: linux/amd64
+        type: string
+      custom_tag:
+        description: optional custom tag on remote repo you want image to be tagged with
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: ci-container-build-${{ github.ref }}-1
@@ -49,7 +51,9 @@ jobs:
           tags: |
             type=schedule
             type=raw,value=latest,enable=${{ github.ref_name == 'main' }}
-            ${{ github.ref_name == 'main' && 'type=raw,value=nightly' || 'type=ref,event=branch' }}
+            type=raw,value=nightly,enable=${{ github.ref_name == 'main' }}
+            type=ref,event=branch,enable=${{ github.ref_name != 'main' && inputs.custom_tag == '' }}
+            ${{ inputs.custom_tag }}
             type=ref,event=tag
             type=ref,event=pr
 
@@ -61,7 +65,7 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         with:
           tags: ${{ steps.meta.outputs.tags }}
-          platforms: linux/amd64,linux/s390x,linux/ppc64le
+          platforms: ${{ inputs.platforms }}
           labels: ${{ steps.meta.outputs.labels }}
           layers: false
           oci: true
@@ -89,13 +93,24 @@ jobs:
           # accessing a mapped port from a container did not work so lets
           # create a pod where both - server and client have same localhost
           podman pod create > podid
-          for arch in amd64 s390x ppc64le; do
-            podman run -d --pod-id-file=podid --name=searchd -u 14:0 ${{ steps.build-image.outputs.image-with-tag }}-linux$arch
+
+          test_tag () {
+            podman run -d --pod-id-file=podid --name=searchd -u 14:0 ${{ steps.build-image.outputs.image-with-tag }}$1
             sleep 3
             podman logs searchd
-            podman run --pod-id-file=podid --rm --entrypoint "/bin/env" mysql:5.7 -- mysql -h 127.0.0.1 -P 9306 -e "SELECT * FROM account limit 1;"
+            podman run --pod-id-file=podid --rm --entrypoint "/bin/env" mysql:8 -- mysql -h 127.0.0.1 -P 9306 -e "SELECT * FROM account limit 1;"
             podman rm -f searchd
-          done
+          }
+
+          if [ $( sed -E -e 's#[^/]##g' <<< ${{ inputs.platforms }} ) != "/" ]; then
+            # if we are here, user has selected more than one build platform
+            arch_tags=$( tr ',' ' ' <<< ${{ inputs.platforms }} | tr -d '/' )
+            # removed slashes to produce "linuxamd64 linuxs390x linuxppc64le"
+            for tag in $arch_tags; do test_tag -$tag; done
+          else
+            # if we are here, user has selected a single build platform
+            test_tag
+          fi
 
       - name: Push To Container Registry
         id: push-to-container-registry
