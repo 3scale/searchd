@@ -1,18 +1,19 @@
 FROM quay.io/centos/centos:stream9 AS builder
 ENV SEARCHD_REF=6.2.12 \
     SEARCHD_REPO=https://github.com/manticoresoftware/manticoresearch.git \
-    CC=clang-16 \
-    CXX=clang++-16 \
+    CC=clang \
+    CXX=clang++ \
     BUILD_PATH=/tmp/manticore_uselessly_long_path_to_prevent_rpm_build_issues \
-    BUILD_FLAGS="-DUSE_SYSLOG=0 -DWITH_GALERA=0 -DWITH_RE2=0 -DWITH_STEMMER=0 -DWITH_ICU=1 -DWITH_SSL=1 -DWITH_ZLIB=1 -DWITH_ODBC=0 -DWITH_EXPAT=0 -DWITH_ICONV=1 -DWITH_POSTGRESQL=0 -DWITH_MYSQL=0 -DBUILD_TESTING=0"
+    BUILD_FLAGS="-DUSE_SYSLOG=0 -DWITH_GALERA=0 -DWITH_RE2=0 -DWITH_STEMMER=0 -DWITH_ICU_FORCE_STATIC=0 -DWITH_SSL=1 -DWITH_ZLIB=1 -DWITH_ODBC=0 -DWITH_EXPAT=0 -DWITH_ICONV=1 -DWITH_POSTGRESQL=0 -DWITH_MYSQL=0 -DBUILD_TESTING=0"
 WORKDIR $BUILD_PATH
 
 SHELL ["/bin/bash", "-x", "-o", "pipefail", "-c"]
 # clang is broken on s390x (RHEL-15874), to use gcc remove CC and CXX variables,
 #   also replace llvm-toolset with make automake gcc gcc-c++ kernel-devel
 # hadolint ignore=DL3003,DL3032,SC2046
-RUN yum install -y --setopt=skip_missing_names_on_install=False,tsflags=nodocs llvm-toolset mysql cmake boost-devel openssl-devel zlib-devel bison flex systemd-units rpm-build git && \
+RUN yum install -y --setopt=skip_missing_names_on_install=False,tsflags=nodocs llvm-toolset mysql cmake boost-devel openssl-devel zlib-devel libicu-devel bison flex systemd-units rpm-build git && \
       git clone --depth=1 --branch=$SEARCHD_REF $SEARCHD_REPO . && \
+      # boost lib in RHEL9 comes dynamic only so enable its use \
       sed -i -e 's/Boost_USE_STATIC_LIBS ON/Boost_USE_STATIC_LIBS OFF/' src/CMakeLists.txt && \
       mkdir build && cd build && \
       cmake $BUILD_FLAGS .. && \
@@ -35,8 +36,8 @@ LABEL org.opencontainers.image.authors="https://issues.redhat.com/browse/THREESC
 ARG PORTA_IMAGE=quay.io/3scale/porta:nightly
 COPY --from=builder /tmp/manticore_uselessly_long_path_to_prevent_rpm_build_issues/build/*.rpm /tmp/rpms/
 COPY --from=$PORTA_IMAGE /opt/system/config/standalone.sphinx.conf "/etc/manticoresearch/manticore.conf"
-ENV MANTICORE_RPMS="manticore-converter* manticore-icudata* manticore-common* manticore-server-core* manticore-server*"
-RUN microdnf install -y --nodocs mysql openssl boost-context boost-filesystem zlib && \
+ENV MANTICORE_RPMS="manticore-converter* manticore-common* manticore-server-core* manticore-server*"
+RUN microdnf install -y --nodocs mysql openssl boost-context boost-filesystem zlib libicu && \
     cd /tmp/rpms && ls -l && \
     rpm -iv --excludedocs $MANTICORE_RPMS && \
     cd - && rm -rf /tmp/rpms && \
