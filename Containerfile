@@ -42,9 +42,11 @@ RUN microdnf install -y --nodocs mysql openssl boost-context boost-filesystem zl
     rpm -iv --excludedocs $MANTICORE_RPMS && \
     cd - && rm -rf /tmp/rpms && \
     microdnf clean all && \
-    sed -i -e 's#/var/run/sphinx/#/var/run/manticore/#' -e 's#/var/lib/searchd#/var/lib/manticore#' /etc/manticoresearch/manticore.conf && \
-    chmod g+w /var/lib/manticore /var/run/manticore /var/log/manticore && \
-    chgrp 0 /var/lib/manticore /var/run/manticore /var/log/manticore
+    # TODO: once in production, update porta to generate config with the correct path \
+    sed -i -e 's#/var/run/sphinx/#/var/run/manticore/#' /etc/manticoresearch/manticore.conf && \
+    mkdir /var/lib/searchd && \
+    chmod g+w /var/lib/searchd /var/run/manticore /var/log/manticore && \
+    chgrp 0 /var/lib/searchd /var/run/manticore /var/log/manticore
 
 WORKDIR /var/lib/manticore
 ENTRYPOINT ["/bin/env", "searchd", "--pidfile", "--config", "/etc/manticoresearch/manticore.conf", "--nodetach"]
