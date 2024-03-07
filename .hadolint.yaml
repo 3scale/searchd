@@ -1,4 +1,5 @@
 ignored:
-  - DL3006
-  - DL3022
-  - DL3033
+  - DL3003 # cd used as part of command, using workdir increases complexity
+  - DL3041 # hardcoding version of rpms is not how this should work
+  - DL3022 # COPY --from can work from another image, not needed to be a layer
+  - DL3033 # hardcoding version of rpms is not how this should work
