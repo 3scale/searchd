@@ -1,4 +1,5 @@
 FROM quay.io/centos/centos:stream9 AS builder
+
 ENV SEARCHD_REF=6.3.6 \
     SEARCHD_REPO=https://github.com/manticoresoftware/manticoresearch.git \
     CC=clang \
@@ -12,7 +13,10 @@ SHELL ["/bin/bash", "-x", "-o", "pipefail", "-c"]
 #   also replace llvm-toolset with make automake gcc gcc-c++ kernel-devel
 # hadolint ignore=DL3003,DL3032,SC2046
 RUN yum install -y --setopt=skip_missing_names_on_install=False,tsflags=nodocs llvm-toolset mysql cmake boost-devel openssl-devel zlib-devel libicu-devel bison flex systemd-units rpm-build git && \
-      git clone --depth=1 --branch=$SEARCHD_REF $SEARCHD_REPO . && \
+      git init . && \
+      git remote add origin $SEARCHD_REPO && \
+      git fetch --depth=1 origin $SEARCHD_REF && \
+      git reset --hard FETCH_HEAD && \
       # boost lib in RHEL9 comes dynamic only so enable its use \
       sed -i -e 's/Boost_USE_STATIC_LIBS ON/Boost_USE_STATIC_LIBS OFF/' src/CMakeLists.txt && \
       mkdir build && cd build && \
