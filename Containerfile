@@ -36,7 +36,7 @@ LABEL org.opencontainers.image.authors="https://issues.redhat.com/browse/THREESC
       # org.opencontainers.image.revision="" \
       # org.opencontainers.image.created=""
 
-ARG PORTA_IMAGE=quay.io/3scale/porta:nightly
+ARG PORTA_IMAGE=quay.io/3scale/porta:3scale-2.14.1-GA
 COPY --from=builder /home/rpms /tmp/rpms
 COPY --from=builder /home/searchd /
 COPY --from=$PORTA_IMAGE /opt/system/config/standalone.sphinx.conf "/etc/sphinx/system.sphinx.conf"

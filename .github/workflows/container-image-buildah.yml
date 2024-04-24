@@ -70,7 +70,7 @@ jobs:
             --squash
             --jobs=3
           build-args: |
-            PORTA_IMAGE=quay.io/3scale/porta:nightly
+            PORTA_IMAGE=quay.io/3scale/porta:3scale-2.14.1-GA
           containerfiles: |
             Containerfile
 
