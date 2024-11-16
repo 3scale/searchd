@@ -1,6 +1,7 @@
 FROM quay.io/centos/centos:stream9 AS builder
 
-ENV SEARCHD_REF=6.3.6 \
+# this is 6.3.8 + big endian fixes and a few other patches
+ENV SEARCHD_REF=de6e35e2e233a012c5a7ed60675d15620234fad3 \
     SEARCHD_REPO=https://github.com/manticoresoftware/manticoresearch.git \
     CC=clang \
     CXX=clang++ \
