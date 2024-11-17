@@ -121,7 +121,8 @@ jobs:
             podman run -d --pod-id-file=podid --name=searchd -u 14:0 "${{ steps.build-image.outputs.image-with-tag }}$1"
             sleep 3
             podman logs searchd
-            podman run --pod-id-file=podid --rm --entrypoint "/bin/env" mysql:8 -- mysql -h 127.0.0.1 -P 9306 -e "SELECT * FROM account limit 1;"
+            podman run --pod-id-file=podid --rm --entrypoint "/bin/env" mysql:8 -- mysql -h 127.0.0.1 -P 9306 -e "INSERT INTO backend_api_core (id, name, system_name) VALUES (1 ,'garga', 'kjdshsafd');"
+            podman run --pod-id-file=podid --rm --entrypoint "/bin/env" mysql:8 -- mysql -h 127.0.0.1 -P 9306 -e "SELECT * FROM backend_api_core limit 1;"
             podman rm -f searchd
           }
 
