@@ -1,10 +1,10 @@
 FROM quay.io/centos/centos:stream9 AS builder
-ENV SEARCHD_REF=6.2.12 \
+ENV SEARCHD_REF=6.3.6 \
     SEARCHD_REPO=https://github.com/manticoresoftware/manticoresearch.git \
     CC=clang \
     CXX=clang++ \
-    BUILD_PATH=/tmp/manticore_uselessly_long_path_to_prevent_rpm_build_issues \
-    BUILD_FLAGS="-DUSE_SYSLOG=0 -DWITH_GALERA=0 -DWITH_RE2=0 -DWITH_STEMMER=0 -DWITH_ICU_FORCE_STATIC=0 -DWITH_SSL=1 -DWITH_ZLIB=1 -DWITH_ODBC=0 -DWITH_EXPAT=0 -DWITH_ICONV=1 -DWITH_POSTGRESQL=0 -DWITH_MYSQL=0 -DBUILD_TESTING=0"
+    BUILD_PATH=/tmp/manticore_uselessly_very_long_path_to_prevent_rpm_build_issues \
+    BUILD_FLAGS="-DUSE_SYSLOG=0 -DWITH_GALERA=0 -DWITH_RE2=0 -DWITH_STEMMER=0 -DWITH_ICU_FORCE_STATIC=0 -DWITH_SSL=1 -DWITH_ZLIB=1 -DWITH_ODBC=0 -DWITH_EXPAT=0 -DWITH_ICONV=1 -DWITH_POSTGRESQL=0 -DWITH_MYSQL=0 -DBUILD_TESTING=0 -DDISTR=rhel9"
 WORKDIR $BUILD_PATH
 
 SHELL ["/bin/bash", "-x", "-o", "pipefail", "-c"]
@@ -17,7 +17,14 @@ RUN yum install -y --setopt=skip_missing_names_on_install=False,tsflags=nodocs l
       sed -i -e 's/Boost_USE_STATIC_LIBS ON/Boost_USE_STATIC_LIBS OFF/' src/CMakeLists.txt && \
       mkdir build && cd build && \
       cmake $BUILD_FLAGS .. && \
-      cmake --build . --target package --config RelWithDebInfo
+      cmake --build . --target package --config RelWithDebInfo # Debug
+
+# Build the tzdata RPM
+COPY --chown=adm rpmbuild/ /var/adm/rpmbuild/
+RUN chown -R adm /var/adm
+WORKDIR /var/adm
+USER adm
+RUN rpmbuild -bb rpmbuild/SPECS/manticore-tzdata.spec
 
 FROM quay.io/centos/centos:stream9-minimal
 
@@ -34,9 +41,10 @@ LABEL org.opencontainers.image.authors="https://issues.redhat.com/browse/THREESC
       # org.opencontainers.image.created=""
 
 ARG PORTA_IMAGE=quay.io/3scale/porta:nightly
-COPY --from=builder /tmp/manticore_uselessly_long_path_to_prevent_rpm_build_issues/build/*.rpm /tmp/rpms/
+COPY --from=builder /tmp/manticore_uselessly_very_long_path_to_prevent_rpm_build_issues/build/*.rpm /tmp/rpms/
+COPY --from=builder /var/adm/rpmbuild/RPMS/noarch/manticore-tzdata-1.1-1.noarch.rpm /tmp/rpms/
 COPY --from=$PORTA_IMAGE /opt/system/config/standalone.sphinx.conf "/etc/manticoresearch/manticore.conf"
-ENV MANTICORE_RPMS="manticore-converter* manticore-common* manticore-server-core* manticore-server*"
+ENV MANTICORE_RPMS="manticore-converter* manticore-common* manticore-server-core* manticore-server* manticore-tzdata-1.1-1.noarch.rpm"
 RUN microdnf install -y --nodocs mysql openssl boost-context boost-filesystem zlib libicu && \
     cd /tmp/rpms && ls -l && \
     rpm -iv --excludedocs $MANTICORE_RPMS && \
