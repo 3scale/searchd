@@ -3,18 +3,36 @@ FROM quay.io/centos/centos:stream9 AS builder
 # this is 6.3.8 + big endian fixes and a few other patches
 ENV SEARCHD_REF=de6e35e2e233a012c5a7ed60675d15620234fad3 \
     SEARCHD_REPO=https://github.com/manticoresoftware/manticoresearch.git \
-    CC=clang \
-    CXX=clang++ \
+    # CC=clang-16 \
+    # CXX=clang++-16 \
     BUILD_PATH=/tmp/manticore_uselessly_very_long_path_to_prevent_rpm_build_issues \
-    BUILD_FLAGS="-DUSE_SYSLOG=0 -DWITH_GALERA=0 -DWITH_RE2=0 -DWITH_STEMMER=0 -DWITH_ICU_FORCE_STATIC=0 -DWITH_SSL=1 -DWITH_ZLIB=1 -DWITH_ODBC=0 -DWITH_EXPAT=0 -DWITH_ICONV=1 -DWITH_POSTGRESQL=0 -DWITH_MYSQL=0 -DBUILD_TESTING=0 -DDISTR=rhel9"
+    BUILD_FLAGS="-DUSE_SYSLOG=0 -DWITH_GALERA=0 -DWITH_RE2=0 -DWITH_STEMMER=0 -DWITH_ICU_FORCE_STATIC=0 -DWITH_SSL=1 -DWITH_ZLIB=1 -DWITH_ODBC=0 -DWITH_EXPAT=0 -DWITH_ICONV=1 -DWITH_POSTGRESQL=0 -DWITH_MYSQL=0 -DBUILD_TESTING=0 -DDISTR=rhel9" \
+    DEPS_CLANG_RHEL9="llvm-toolset-16.0.6-4.el9" \
+    DEPS_GCC_UBI9="make automake gcc-toolset-13 gcc gcc-c++" \
+    DEPS_NON_UBI="boost-devel bison flex"
 WORKDIR $BUILD_PATH
 
 SHELL ["/bin/bash", "-x", "-o", "pipefail", "-c"]
-# clang is broken on s390x (RHEL-15874), to use gcc remove CC and CXX variables,
-#   also replace llvm-toolset with make automake gcc gcc-c++ kernel-devel
-# hadolint ignore=DL3003,DL3032,SC2046
-RUN yum install -y --setopt=skip_missing_names_on_install=False,tsflags=nodocs llvm-toolset mysql cmake boost-devel openssl-devel zlib-devel libicu-devel bison flex systemd-units rpm-build git && \
-      git init . && \
+# to use clang, adjust CC and CXX variables and dependencies
+# hadolint ignore=DL3040
+RUN dnf install -y --setopt=strict=True --setopt=tsflags=nodocs mysql cmake $DEPS_GCC_UBI9 openssl-devel zlib-devel libicu-devel systemd-units rpm-build git xz gcc-c++
+
+# install non-ubi deps form centos
+COPY centos_repo/RPM-GPG-KEY-centosofficial /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+COPY centos_repo/centos-appstream.repo /etc/yum.repos.d/
+COPY centos_repo/vars/stream /etc/yum/vars/
+COPY centos_repo/vars/stream /etc/dnf/vars/
+# hadolint ignore=DL3040
+RUN dnf install -y --setopt=strict=True --setopt=tsflags=nodocs $DEPS_NON_UBI
+
+# RUN curl -sSL https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.6/llvm-project-16.0.6.src.tar.xz -o llvm-project-16.0.6.src.tar.xz && \
+#    tar xvfJ llvm-project-16.0.6.src.tar.xz && \
+#    cd llvm-project-16.0.6.src && \
+#    cmake -S llvm -B build -G "Unix Makefiles" -DLLVM_ENABLE_PROJECTS="clang;lld" -DCMAKE_BUILD_TYPE=MinSizeRel && \
+#    cmake --build build && \
+#    cmake --install build
+
+RUN git init . && \
       git remote add origin $SEARCHD_REPO && \
       git fetch --depth=1 origin $SEARCHD_REF && \
       git reset --hard FETCH_HEAD && \
@@ -62,5 +80,6 @@ RUN microdnf install -y --nodocs mysql openssl boost-context boost-filesystem zl
     chgrp 0 /var/lib/searchd /var/run/manticore /var/log/manticore
 
 WORKDIR /var/lib/manticore
-ENTRYPOINT ["/bin/env", "searchd", "--pidfile", "--config", "/etc/manticoresearch/manticore.conf", "--nodetach"]
+ENTRYPOINT ["/bin/searchd", "--pidfile", "--config", "/etc/manticoresearch/manticore.conf", "--nodetach"]
+USER 1001
 EXPOSE 9306/tcp
