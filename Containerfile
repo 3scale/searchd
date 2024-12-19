@@ -15,15 +15,7 @@ WORKDIR $BUILD_PATH
 SHELL ["/bin/bash", "-x", "-o", "pipefail", "-c"]
 # to use clang, adjust CC and CXX variables and dependencies
 # hadolint ignore=DL3040
-RUN dnf install -y --setopt=strict=True --setopt=tsflags=nodocs mysql cmake $DEPS_GCC_UBI9 openssl-devel zlib-devel libicu-devel systemd-units rpm-build git xz gcc-c++
-
-# install non-ubi deps form centos
-COPY centos_repo/RPM-GPG-KEY-centosofficial /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
-COPY centos_repo/centos-appstream.repo /etc/yum.repos.d/
-COPY centos_repo/vars/stream /etc/yum/vars/
-COPY centos_repo/vars/stream /etc/dnf/vars/
-# hadolint ignore=DL3040
-RUN dnf install -y --setopt=strict=True --setopt=tsflags=nodocs $DEPS_NON_UBI
+RUN dnf install -y --setopt=strict=True --setopt=tsflags=nodocs mysql cmake $DEPS_GCC_UBI9 $DEPS_NON_UBI openssl-devel zlib-devel libicu-devel systemd-units rpm-build git xz gcc-c++
 
 # RUN curl -sSL https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.6/llvm-project-16.0.6.src.tar.xz -o llvm-project-16.0.6.src.tar.xz && \
 #    tar xvfJ llvm-project-16.0.6.src.tar.xz && \
@@ -49,7 +41,9 @@ WORKDIR /var/adm
 USER adm
 RUN rpmbuild -bb rpmbuild/SPECS/manticore-tzdata.spec
 
-FROM quay.io/centos/centos:stream9-minimal
+# it is ok not to tag ubi image as it is stable enough
+# hadolint ignore=DL3006
+FROM registry.access.redhat.com/ubi9-minimal
 
 LABEL org.opencontainers.image.authors="https://issues.redhat.com/browse/THREESCALE" \
       org.opencontainers.image.title="3scale searchd" \
