@@ -62,8 +62,19 @@ COPY --from=builder /tmp/manticore_uselessly_very_long_path_to_prevent_rpm_build
 COPY --from=builder /var/adm/rpmbuild/RPMS/noarch/manticore-tzdata-1.1-1.noarch.rpm /tmp/rpms/
 COPY --from=$PORTA_IMAGE /opt/system/config/standalone.sphinx.conf "/etc/manticoresearch/manticore.conf"
 ENV MANTICORE_RPMS="manticore-converter* manticore-common* manticore-server-core* manticore-server* manticore-tzdata-1.1-1.noarch.rpm"
-RUN microdnf install -y --nodocs mysql openssl boost-context boost-filesystem zlib libicu && \
-    cd /tmp/rpms && ls -l && \
+
+# hadolint ignore=DL3040
+RUN microdnf install -y --nodocs mysql openssl boost-context boost-filesystem zlib libicu
+
+# install boost from centos as it is missing in ubi
+COPY centos_repo/RPM-GPG-KEY-centosofficial /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+COPY centos_repo/centos-appstream.repo /etc/yum.repos.d/
+COPY centos_repo/vars/stream /etc/yum/vars/
+COPY centos_repo/vars/stream /etc/dnf/vars/
+# hadolint ignore=DL3040
+RUN microdnf install -y --nodocs boost-context boost-filesystem
+
+RUN cd /tmp/rpms && ls -l && \
     rpm -iv --excludedocs $MANTICORE_RPMS && \
     cd - && rm -rf /tmp/rpms && \
     microdnf clean all && \
