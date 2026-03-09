@@ -80,7 +80,7 @@ jobs:
             type=ref,event=pr
 
       # https://github.com/actions/checkout
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Build image
         id: build-image
