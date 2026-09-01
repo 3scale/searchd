@@ -3,3 +3,4 @@ ignored:
   - DL3041 # hardcoding version of rpms is not how this should work
   - DL3022 # COPY --from can work from another image, not needed to be a layer
   - DL3033 # hardcoding version of rpms is not how this should work
+  - DL3066 # builder stage uses 'adm' from a controlled base image; literal name is intentional

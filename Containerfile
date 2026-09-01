@@ -46,7 +46,7 @@ RUN rpmbuild -bb rpmbuild/SPECS/manticore-tzdata.spec
 
 # Download boost RPMs for runtime
 WORKDIR /tmp/boost_rpms
-RUN dnf download --arch `uname -m` $DEPS_NON_UBI_RUNTIME
+RUN dnf download --arch "$(uname -m)" $DEPS_NON_UBI_RUNTIME
 
 # it is ok not to tag ubi image as it is stable enough
 # hadolint ignore=DL3006
